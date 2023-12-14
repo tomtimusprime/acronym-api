@@ -26,7 +26,7 @@ pub async fn all_acronyms(connection_pool: &MySqlPool) -> Result<Vec<Acronym>> {
 
 pub async fn acronym_by_id(connection_pool: &MySqlPool, id:i32) -> Result<Acronym> {
     Ok(
-        sqlx::query_as::<_, Acronym>("SELECT * FROM acronyms WHERE id=$1")
+        sqlx::query_as::<_, Acronym>("SELECT * FROM acronyms WHERE id=?")
         .bind(id)
         .fetch_one(connection_pool)
         .await?,
@@ -37,7 +37,7 @@ pub async fn add_acronym<S: ToString>(connection_pool: &MySqlPool, acronym: S, d
     let acronym = acronym.to_string();
     let definition = definition.to_string();
     Ok(
-        sqlx::query("INSERT INTO acronyms (acronym, definition) VALUES ($1, $2) RETURNING id")
+        sqlx::query("INSERT INTO acronyms (acronym, definition) VALUES (?, ?)")
         .bind(acronym)
         .bind(definition)
         .fetch_one(connection_pool)
@@ -47,7 +47,7 @@ pub async fn add_acronym<S: ToString>(connection_pool: &MySqlPool, acronym: S, d
 }
 
 pub async fn update_acronym(connection_pool: &MySqlPool, acronym: &Acronym) -> Result<()> {
-    sqlx::query("UPDATE acronyms SET acronym=$1, definition=$2, WHERE id=$3")
+    sqlx::query("UPDATE acronyms SET acronym=?, definition=?, WHERE id=?")
     .bind(&acronym.acronym)
     .bind(&acronym.definition)
     .bind(&acronym.id)
@@ -57,7 +57,7 @@ pub async fn update_acronym(connection_pool: &MySqlPool, acronym: &Acronym) -> R
 }
 
 pub async fn delete_acronym(connection_pool: &MySqlPool, id:i32) -> Result<()> {
-    sqlx::query("DELETE FROM acronyms WHERE id=$1")
+    sqlx::query("DELETE FROM acronyms WHERE id=?")
     .bind(id)
     .execute(connection_pool)
     .await?;
