@@ -21,7 +21,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Define the address to listen on (everything)
     let addr = SocketAddr::from(([0, 0, 0, 0], 3001));
-
+    println!("Server running on {:?}", addr);
     // Start the server
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
