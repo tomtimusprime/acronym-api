@@ -47,7 +47,7 @@ pub async fn add_acronym<S: ToString>(connection_pool: &MySqlPool, acronym: S, d
 }
 
 pub async fn update_acronym(connection_pool: &MySqlPool, acronym: &Acronym) -> Result<()> {
-    sqlx::query("UPDATE acronyms SET acronym=?, definition=?, WHERE id=?")
+    sqlx::query("UPDATE acronyms SET acronym=?, definition=? WHERE id=?")
     .bind(&acronym.acronym)
     .bind(&acronym.definition)
     .bind(&acronym.id)

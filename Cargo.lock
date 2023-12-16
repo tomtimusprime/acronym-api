@@ -10,6 +10,7 @@ dependencies = [
  "axum",
  "axum-test-helper",
  "dotenv",
+ "log",
  "once_cell",
  "serde",
  "serde_json",

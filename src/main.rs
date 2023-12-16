@@ -1,10 +1,9 @@
 use std::net::SocketAddr;
 
-use sqlx::MySqlPool;
-use axum::{Router, routing::get, response::IntoResponse, http::StatusCode, Extension};
+use axum::{Router, Extension};
 mod db;
 mod rest;
-use db::{init_db, all_acronyms, acronym_by_id, add_acronym};
+use db::{init_db};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -28,10 +27,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     Ok(())
-}
-
-async fn router(connection_pool: MySqlPool) -> Router {
-    Router::new()
-    .nest_service("/acronyms", rest::acronym_service())
-    .layer(Extension(connection_pool))
 }
