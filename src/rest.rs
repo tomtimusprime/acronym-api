@@ -14,6 +14,7 @@ pub fn acronym_service() -> Router {
         .route("/add", post(add_acronym_handler))
         .route("/update", put(update_acronym_handler))
         .route("/delete/:id", delete(delete_acronym_handler))
+        .route("/search/:term", get(search_acronym_handler))
 }
 
 #[derive(Debug)]
@@ -51,7 +52,7 @@ async fn get_acronym_by_id_handler(
         Ok(acronym) => {
             info!("Acronym added successfully. Id: {:?}", id);
             Ok(Json(acronym))
-        },
+        }
         Err(e) => {
             error!("Failed to get acronym: {:?}", e);
             Err(StatusCode::SERVICE_UNAVAILABLE)
@@ -67,7 +68,7 @@ async fn add_acronym_handler(
         Ok(id) => {
             info!("Added acronym successfully.");
             Ok(Json(id))
-        },
+        }
         Err(e) => {
             error!("Failed to add acronym: {:?}", e);
             Err(StatusCode::SERVICE_UNAVAILABLE)
@@ -86,7 +87,9 @@ async fn update_acronym_handler(
         }
         Err(e) => {
             error!("Failed to update acronym. {:?}", e);
-            Err(ApiError {cause: format!("{:?}", e)})
+            Err(ApiError {
+                cause: format!("{:?}", e),
+            })
         }
     }
 }
@@ -99,10 +102,28 @@ async fn delete_acronym_handler(
         Ok(_) => {
             info!("Acronym deleted successfully. Id:{:?}", id);
             Ok(StatusCode::OK)
-        },
+        }
         Err(e) => {
             error!("Failed to delete acronym. {:?}", e);
-            Err(ApiError {cause: format!("{:?}", e)})
+            Err(ApiError {
+                cause: format!("{:?}", e),
+            })
+        }
+    }
+}
+
+async fn search_acronym_handler(
+    Extension(conn): Extension<MySqlPool>,
+    Path(search_term): Path<String>,
+) -> Result<Json<Vec<Acronym>>, StatusCode> {
+    match crate::db::search_acronyms(&conn, &search_term).await {
+        Ok(acronyms) => {
+            info!("Acronyms successfully searched.");
+            Ok(Json(acronyms))
+        },
+        Err(e) => {
+            error!("Failed to search for acronyms: {:?}", e);
+            Err(StatusCode::SERVICE_UNAVAILABLE)
         }
     }
 }
@@ -115,8 +136,8 @@ mod test {
         dotenv::dotenv().ok();
         let connection_pool = crate::init_db().await.unwrap();
         let app = Router::new()
-        .nest_service("/acronyms", crate::rest::acronym_service())
-        .layer(Extension(connection_pool));
+            .nest_service("/acronyms", crate::rest::acronym_service())
+            .layer(Extension(connection_pool));
         TestClient::new(app)
     }
 
@@ -127,5 +148,29 @@ mod test {
         assert_eq!(res.status(), StatusCode::OK);
         let acronyms: Vec<Acronym> = res.json().await;
         assert!(!acronyms.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_get_acronym_by_id() {
+        let client = setup_connection().await;
+        let res = client.get("/acronyms/1").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        let acronym: Acronym = res.json().await;
+        assert_eq!(acronym.id, 1)
+    }
+
+    #[tokio::test]
+    async fn test_add_acronym() {
+        let client = setup_connection().await;
+        let new_acronym = Acronym {
+            id: 45,
+            acronym: "Test Acronym".to_string(),
+            definition: "Test definition".to_string(),
+        };
+        let res = client.post("/acronyms/add").json(&new_acronym).send().await;
+        println!("Response Status: {:?}", res.status());
+        assert_eq!(res.status(), StatusCode::OK);
+        let new_id: i32 = res.json().await;
+        assert!(new_id > 0);
     }
 }

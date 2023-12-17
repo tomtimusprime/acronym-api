@@ -1,6 +1,6 @@
 use anyhow::Result;
 use serde::{Serialize, Deserialize};
-use sqlx::{FromRow, MySqlPool, Row};
+use sqlx::{FromRow, MySqlPool, Row, Error};
 
 #[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
 pub struct Acronym {
@@ -62,4 +62,12 @@ pub async fn delete_acronym(connection_pool: &MySqlPool, id:i32) -> Result<()> {
     .execute(connection_pool)
     .await?;
     Ok(())
+}
+
+pub async fn search_acronyms(connection_pool: &MySqlPool, search_term: &str) -> Result<Vec<Acronym>, sqlx::Error> {
+    sqlx::query_as::<_, Acronym>("SELECT * FROM acronyms WHERE acronym LIKE ? OR definition LIKE ?")
+    .bind(format!("%{}%", search_term))
+    .bind(format!("%{}%", search_term))
+    .fetch_all(connection_pool)
+    .await
 }
