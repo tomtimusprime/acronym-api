@@ -47,10 +47,15 @@ async fn get_acronym_by_id_handler(
     Extension(conn): Extension<MySqlPool>,
     Path(id): Path<i32>,
 ) -> Result<Json<Acronym>, StatusCode> {
-    if let Ok(acronym) = acronym_by_id(&conn, id).await {
-        Ok(Json(acronym))
-    } else {
-        Err(StatusCode::SERVICE_UNAVAILABLE)
+    match acronym_by_id(&conn, id).await {
+        Ok(acronym) => {
+            info!("Acronym added successfully. Id: {:?}", id);
+            Ok(Json(acronym))
+        },
+        Err(e) => {
+            error!("Failed to get acronym: {:?}", e);
+            Err(StatusCode::SERVICE_UNAVAILABLE)
+        }
     }
 }
 
@@ -58,10 +63,15 @@ async fn add_acronym_handler(
     Extension(conn): Extension<MySqlPool>,
     extract::Json(acronym): extract::Json<Acronym>,
 ) -> Result<Json<i32>, StatusCode> {
-    if let Ok(new_id) = crate::db::add_acronym(&conn, acronym.acronym, acronym.definition).await {
-        Ok(Json(new_id))
-    } else {
-        Err(StatusCode::SERVICE_UNAVAILABLE)
+    match crate::db::add_acronym(&conn, acronym.acronym, acronym.definition).await {
+        Ok(id) => {
+            info!("Added acronym successfully.");
+            Ok(Json(id))
+        },
+        Err(e) => {
+            error!("Failed to add acronym: {:?}", e);
+            Err(StatusCode::SERVICE_UNAVAILABLE)
+        }
     }
 }
 
@@ -71,11 +81,11 @@ async fn update_acronym_handler(
 ) -> Result<StatusCode, ApiError> {
     match crate::db::update_acronym(&conn, &acronym).await {
         Ok(_) => {
-            info!("Acronym update succesfully.");
+            info!("Acronym updated succesfully. {:?}", &acronym.id);
             Ok(StatusCode::OK)
         }
         Err(e) => {
-            error!("Failed to update acronym {:?}", e);
+            error!("Failed to update acronym. {:?}", e);
             Err(ApiError {cause: format!("{:?}", e)})
         }
     }
@@ -84,10 +94,38 @@ async fn update_acronym_handler(
 async fn delete_acronym_handler(
     Extension(conn): Extension<MySqlPool>,
     Path(id): Path<i32>,
-) -> StatusCode {
-    if crate::db::delete_acronym(&conn, id).await.is_ok() {
-        StatusCode::OK
-    } else {
-        StatusCode::SERVICE_UNAVAILABLE
+) -> Result<StatusCode, ApiError> {
+    match crate::db::delete_acronym(&conn, id).await {
+        Ok(_) => {
+            info!("Acronym deleted successfully. Id:{:?}", id);
+            Ok(StatusCode::OK)
+        },
+        Err(e) => {
+            error!("Failed to delete acronym. {:?}", e);
+            Err(ApiError {cause: format!("{:?}", e)})
+        }
+    }
+}
+
+mod test {
+    use super::*;
+    use axum_test_helper::TestClient;
+
+    async fn setup_connection() -> TestClient {
+        dotenv::dotenv().ok();
+        let connection_pool = crate::init_db().await.unwrap();
+        let app = Router::new()
+        .nest_service("/acronyms", crate::rest::acronym_service())
+        .layer(Extension(connection_pool));
+        TestClient::new(app)
+    }
+
+    #[tokio::test]
+    async fn test_get_all_acronyms() {
+        let client = setup_connection().await;
+        let res = client.get("/acronyms").send().await;
+        assert_eq!(res.status(), StatusCode::OK);
+        let acronyms: Vec<Acronym> = res.json().await;
+        assert!(!acronyms.is_empty());
     }
 }
