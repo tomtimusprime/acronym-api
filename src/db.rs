@@ -1,8 +1,9 @@
 use anyhow::Result;
 use serde::{Serialize, Deserialize};
 use sqlx::{FromRow, MySqlPool, Row, Error};
+use utoipa::ToSchema;
 
-#[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
+#[derive(Debug, Default, Serialize, Deserialize, FromRow, Clone, ToSchema)]
 pub struct Acronym {
     pub id: i32,
     pub acronym: String,
