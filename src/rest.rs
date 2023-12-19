@@ -202,4 +202,27 @@ mod test {
         let new_id: i32 = res.json().await;
         assert!(new_id > 0);
     }
+
+    #[tokio::test]
+    async fn test_delete_acronym() {
+        let client = setup_connection().await;
+        let new_acronym = Acronym {
+            id: -1,
+            acronym: "Delete".to_string(),
+            definition: "Delete".to_string(),
+        };
+        let new_id:i32 = client
+        .post("/acronyms/add")
+        .json(&new_acronym)
+        .send()
+        .await
+        .json()
+        .await;
+
+        let res = client
+        .delete(&format!("acronyms/delete/{new_id}"))
+        .send()
+        .await;
+        assert_eq!(res.status(), StatusCode::OK);
+    }
 }
